@@ -1,7 +1,7 @@
 # Assignment Response: Clinical Supply Chain Control Tower
 ## AI Implementation Engineer - Agentic Architecture Design
 
-**Submitted By**: Expert AI/ML Engineering Team  
+**Submitted By**: Rajan Mishra  
 **Date**: November 30, 2025  
 **Client**: Global Pharma Inc. (via Shashank)  
 **Status**: ✅ **COMPLETE & PRODUCTION-READY**

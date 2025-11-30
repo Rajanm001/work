@@ -1,10 +1,11 @@
 # 🏥 Clinical Supply Chain Control Tower
 
-[![Production Ready](https://img.shields.io/badge/status-production--ready-green.svg)](https://github.com)
+[![Production Ready](https://img.shields.io/badge/status-production--ready-green.svg)](https://github.com/Rajanm001/work)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/)
 [![PostgreSQL](https://img.shields.io/badge/postgresql-14+-blue.svg)](https://postgresql.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.108+-00a393.svg)](https://fastapi.tiangolo.com/)
-[![License](https://img.shields.io/badge/license-Proprietary-red.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Maintained by Rajan Mishra](https://img.shields.io/badge/maintained%20by-Rajan%20Mishra-blue)](https://github.com/Rajanm001)
 
 **Enterprise AI-powered system for clinical trial supply chain management**  
 Automated risk detection, predictive analytics, and intelligent decision support across 50+ countries
@@ -363,11 +364,11 @@ pytest tests/ --cov=agents --cov=tools
 
 ---
 
-## 👥 Development Team
+## �‍💻 About Developer
 
-**Experience**: 65+ years combined in AI/ML and enterprise software  
-**Quality Standard**: Fortune 500 production grade  
-**Delivery**: Complete, professional, ready for deployment
+**Rajan Mishra** - AI/ML Engineer & Full-Stack Developer  
+**Expertise**: Multi-agent systems, supply chain optimization, enterprise software  
+**Focus**: Production-grade solutions with beautiful UX
 
 ---
 
@@ -381,8 +382,9 @@ pytest tests/ --cov=agents --cov=tools
 
 ## 📜 License
 
-**Proprietary** - Global Pharma Inc. © 2025  
-All rights reserved. Internal use only.
+This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
+
+Copyright © 2025 Rajan Mishra
 
 ---
 

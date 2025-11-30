@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "AI-powered clinical trial supply chain control tower with autonomous monitoring and conversational decision support",
   "author": "Rajan Mishra <rajanm001@gmail.com>",
-  "license": "Proprietary",
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/Rajanm001/work.git"

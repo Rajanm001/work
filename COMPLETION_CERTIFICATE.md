@@ -10,7 +10,7 @@
 **Client**: Global Pharma Inc.  
 **Project Type**: Enterprise AI System  
 **Completion Date**: November 30, 2025  
-**Development Team**: Expert AI/ML Engineers (65+ years combined experience)
+**Developer**: Rajan Mishra
 
 ---
 
