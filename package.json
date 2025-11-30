@@ -1,0 +1,29 @@
+{
+  "name": "clinical-supply-chain-ai",
+  "version": "1.0.0",
+  "description": "AI-powered clinical trial supply chain control tower with autonomous monitoring and conversational decision support",
+  "author": "Rajan Mishra <rajanm001@gmail.com>",
+  "license": "Proprietary",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Rajanm001/work.git"
+  },
+  "keywords": [
+    "ai",
+    "machine-learning",
+    "supply-chain",
+    "clinical-trials",
+    "fastapi",
+    "postgresql",
+    "predictive-analytics"
+  ],
+  "engines": {
+    "python": ">=3.11"
+  },
+  "scripts": {
+    "setup": "python scripts/setup_complete.py",
+    "start": "python api/main.py",
+    "validate": "python scripts/validate_project.py",
+    "test": "pytest tests/ -v"
+  }
+}

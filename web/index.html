@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clinical Supply Chain Control Tower</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.6.2/axios.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #3b82f6;
+            --secondary-color: #8b5cf6;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --danger-color: #ef4444;
+            --dark-bg: #1e293b;
+            --light-bg: #f8fafc;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .card {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            color: white;
+        }
+        
+        .pulse {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: .7;
+            }
+        }
+        
+        .badge-critical {
+            background-color: var(--danger-color);
+            color: white;
+        }
+        
+        .badge-high {
+            background-color: var(--warning-color);
+            color: white;
+        }
+        
+        .badge-medium {
+            background-color: #3b82f6;
+            color: white;
+        }
+        
+        .badge-low {
+            background-color: var(--success-color);
+            color: white;
+        }
+        
+        .loading-spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid var(--primary-color);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .chat-container {
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        
+        .message-user {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .message-agent {
+            background: #f1f5f9;
+            color: #1e293b;
+        }
+        
+        .progress-ring {
+            transform: rotate(-90deg);
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <nav class="glass-effect shadow-lg mb-6">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <i class="fas fa-hospital-symbol text-3xl text-indigo-600 mr-3"></i>
+                    <div>
+                        <h1 class="text-xl font-bold text-gray-900">Clinical Supply Chain Control Tower</h1>
+                        <p class="text-sm text-gray-600">AI-Powered Risk Detection & Decision Support</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <button onclick="runMonitoring()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg flex items-center">
+                        <i class="fas fa-radar mr-2"></i>
+                        Run Monitoring
+                    </button>
+                    <div class="flex items-center space-x-2">
+                        <span class="w-2 h-2 bg-green-500 rounded-full pulse"></span>
+                        <span class="text-sm text-gray-700">System Operational</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <!-- Stats Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+            <div class="stat-card card rounded-xl shadow-lg p-6">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-white/80 text-sm font-medium">Total Batches</p>
+                        <h3 class="text-3xl font-bold mt-2" id="totalBatches">-</h3>
+                    </div>
+                    <i class="fas fa-boxes text-4xl text-white/30"></i>
+                </div>
+            </div>
+
+            <div class="stat-card card rounded-xl shadow-lg p-6" style="background: linear-gradient(135deg, #f59e0b 0%, #dc2626 100%);">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-white/80 text-sm font-medium">Expiring Soon</p>
+                        <h3 class="text-3xl font-bold mt-2" id="expiringSoon">-</h3>
+                    </div>
+                    <i class="fas fa-exclamation-triangle text-4xl text-white/30"></i>
+                </div>
+            </div>
+
+            <div class="stat-card card rounded-xl shadow-lg p-6" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-white/80 text-sm font-medium">Active Trials</p>
+                        <h3 class="text-3xl font-bold mt-2" id="activeTrials">-</h3>
+                    </div>
+                    <i class="fas fa-flask text-4xl text-white/30"></i>
+                </div>
+            </div>
+
+            <div class="stat-card card rounded-xl shadow-lg p-6" style="background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-white/80 text-sm font-medium">Total Patients</p>
+                        <h3 class="text-3xl font-bold mt-2" id="totalPatients">-</h3>
+                    </div>
+                    <i class="fas fa-users text-4xl text-white/30"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Expiring Inventory -->
+            <div class="lg:col-span-2 glass-effect rounded-xl shadow-lg p-6 card">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-bold text-gray-900 flex items-center">
+                        <i class="fas fa-calendar-times text-red-600 mr-2"></i>
+                        Expiring Inventory (90 Days)
+                    </h2>
+                    <button onclick="refreshExpiring()" class="text-indigo-600 hover:text-indigo-800">
+                        <i class="fas fa-refresh"></i>
+                    </button>
+                </div>
+                <div id="expiringInventory" class="space-y-3 max-h-96 overflow-y-auto">
+                    <div class="flex justify-center items-center py-12">
+                        <div class="loading-spinner"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Risk Distribution -->
+            <div class="glass-effect rounded-xl shadow-lg p-6 card">
+                <h2 class="text-xl font-bold text-gray-900 mb-4 flex items-center">
+                    <i class="fas fa-chart-pie text-purple-600 mr-2"></i>
+                    Risk Distribution
+                </h2>
+                <canvas id="riskChart" height="250"></canvas>
+                <div class="mt-4 space-y-2">
+                    <div class="flex justify-between items-center">
+                        <span class="flex items-center">
+                            <span class="w-3 h-3 bg-red-500 rounded-full mr-2"></span>
+                            <span class="text-sm">Critical (&lt;30 days)</span>
+                        </span>
+                        <span class="font-bold" id="criticalCount">0</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="flex items-center">
+                            <span class="w-3 h-3 bg-yellow-500 rounded-full mr-2"></span>
+                            <span class="text-sm">High (30-60 days)</span>
+                        </span>
+                        <span class="font-bold" id="highCount">0</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="flex items-center">
+                            <span class="w-3 h-3 bg-blue-500 rounded-full mr-2"></span>
+                            <span class="text-sm">Medium (60-90 days)</span>
+                        </span>
+                        <span class="font-bold" id="mediumCount">0</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- AI Chat Assistant -->
+        <div class="glass-effect rounded-xl shadow-lg p-6 card mt-6">
+            <h2 class="text-xl font-bold text-gray-900 mb-4 flex items-center">
+                <i class="fas fa-robot text-indigo-600 mr-2"></i>
+                Scenario Strategist - AI Assistant
+            </h2>
+            <div class="chat-container mb-4 p-4 bg-gray-50 rounded-lg" id="chatMessages">
+                <div class="message-agent rounded-lg p-4 mb-3">
+                    <p class="text-sm font-medium mb-1">AI Assistant</p>
+                    <p>Hello! I'm your Scenario Strategist. Ask me anything about supply chain decisions, shelf-life extensions, or stock availability. For example: "Can we extend Batch LOT-14364098 for Saint Kitts and Nevis?"</p>
+                </div>
+            </div>
+            <div class="flex space-x-2">
+                <input 
+                    type="text" 
+                    id="chatInput" 
+                    class="flex-1 rounded-lg border border-gray-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="Ask about batch extensions, timelines, or stock levels..."
+                    onkeypress="handleChatEnter(event)"
+                >
+                <button 
+                    onclick="sendChatMessage()" 
+                    class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg flex items-center"
+                >
+                    <i class="fas fa-paper-plane mr-2"></i>
+                    Send
+                </button>
+            </div>
+        </div>
+
+        <!-- Recent Orders -->
+        <div class="glass-effect rounded-xl shadow-lg p-6 card mt-6 mb-6">
+            <h2 class="text-xl font-bold text-gray-900 mb-4 flex items-center">
+                <i class="fas fa-shipping-fast text-green-600 mr-2"></i>
+                Recent Distribution Orders
+            </h2>
+            <div class="overflow-x-auto">
+                <table class="min-w-full" id="ordersTable">
+                    <thead>
+                        <tr class="border-b border-gray-200">
+                            <th class="text-left py-3 px-4 text-sm font-semibold text-gray-700">Order #</th>
+                            <th class="text-left py-3 px-4 text-sm font-semibold text-gray-700">Trial</th>
+                            <th class="text-left py-3 px-4 text-sm font-semibold text-gray-700">Status</th>
+                            <th class="text-left py-3 px-4 text-sm font-semibold text-gray-700">Order Date</th>
+                            <th class="text-left py-3 px-4 text-sm font-semibold text-gray-700">Delivery</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ordersBody">
+                        <tr>
+                            <td colspan="5" class="text-center py-8">
+                                <div class="loading-spinner mx-auto"></div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8000/api';
+        let riskChart = null;
+
+        // Initialize dashboard
+        async function initDashboard() {
+            await loadDashboardData();
+            await loadExpiringInventory();
+            setInterval(loadDashboardData, 60000); // Refresh every minute
+        }
+
+        // Load main dashboard data
+        async function loadDashboardData() {
+            try {
+                const response = await axios.get(`${API_BASE}/dashboard`);
+                const data = response.data;
+
+                // Update stats
+                document.getElementById('totalBatches').textContent = data.inventory.total_batches || 0;
+                document.getElementById('expiringSoon').textContent = data.inventory.expiring_soon || 0;
+                document.getElementById('activeTrials').textContent = data.enrollment.active_trials || 0;
+                document.getElementById('totalPatients').textContent = (data.enrollment.total_patients || 0).toLocaleString();
+
+                // Update risk counts
+                document.getElementById('criticalCount').textContent = data.risks.critical_expiry || 0;
+                document.getElementById('highCount').textContent = data.risks.high_expiry || 0;
+                document.getElementById('mediumCount').textContent = data.risks.medium_expiry || 0;
+
+                // Update risk chart
+                updateRiskChart(data.risks);
+
+                // Load recent orders
+                loadRecentOrders(data.recent_orders);
+            } catch (error) {
+                console.error('Error loading dashboard:', error);
+            }
+        }
+
+        // Update risk distribution chart
+        function updateRiskChart(risks) {
+            const ctx = document.getElementById('riskChart').getContext('2d');
+            
+            if (riskChart) {
+                riskChart.destroy();
+            }
+
+            riskChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Critical', 'High', 'Medium'],
+                    datasets: [{
+                        data: [
+                            risks.critical_expiry || 0,
+                            risks.high_expiry || 0,
+                            risks.medium_expiry || 0
+                        ],
+                        backgroundColor: ['#ef4444', '#f59e0b', '#3b82f6'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+        }
+
+        // Load expiring inventory
+        async function loadExpiringInventory() {
+            try {
+                const response = await axios.get(`${API_BASE}/inventory/expiring?days=90`);
+                const container = document.getElementById('expiringInventory');
+                
+                if (response.data.count === 0) {
+                    container.innerHTML = '<p class="text-center text-gray-500 py-8">No inventory expiring in the next 90 days</p>';
+                    return;
+                }
+
+                container.innerHTML = response.data.items.map(item => `
+                    <div class="flex justify-between items-center p-4 bg-white rounded-lg border border-gray-200 hover:shadow-md transition">
+                        <div class="flex-1">
+                            <p class="font-semibold text-gray-900">${item.trial_name}</p>
+                            <p class="text-sm text-gray-600">Lot: ${item.lot} | ${item.package_type_description}</p>
+                            <p class="text-xs text-gray-500">${item.location}</p>
+                        </div>
+                        <div class="text-right">
+                            <span class="badge-${item.risk_level.toLowerCase()} px-3 py-1 rounded-full text-xs font-bold">
+                                ${item.risk_level}
+                            </span>
+                            <p class="text-sm text-gray-600 mt-1">${Math.round(item.days_until_expiry)} days</p>
+                            <p class="text-xs text-gray-500">${new Date(item.expiry_date).toLocaleDateString()}</p>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Error loading expiring inventory:', error);
+            }
+        }
+
+        // Load recent orders
+        function loadRecentOrders(orders) {
+            const tbody = document.getElementById('ordersBody');
+            
+            if (!orders || orders.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-gray-500">No recent orders</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = orders.map(order => `
+                <tr class="border-b border-gray-100 hover:bg-gray-50">
+                    <td class="py-3 px-4 text-sm">${order.order_number}</td>
+                    <td class="py-3 px-4 text-sm">${order.trial_alias}</td>
+                    <td class="py-3 px-4">
+                        <span class="px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(order.status)}">
+                            ${order.status}
+                        </span>
+                    </td>
+                    <td class="py-3 px-4 text-sm">${new Date(order.order_date).toLocaleDateString()}</td>
+                    <td class="py-3 px-4 text-sm">${order.actual_delivery_date ? new Date(order.actual_delivery_date).toLocaleDateString() : 'Pending'}</td>
+                </tr>
+            `).join('');
+        }
+
+        function getStatusColor(status) {
+            const colors = {
+                'Completed': 'bg-green-100 text-green-800',
+                'In Progress': 'bg-blue-100 text-blue-800',
+                'Released': 'bg-yellow-100 text-yellow-800',
+                'Closed': 'bg-gray-100 text-gray-800'
+            };
+            return colors[status] || 'bg-gray-100 text-gray-800';
+        }
+
+        // Chat functionality
+        async function sendChatMessage() {
+            const input = document.getElementById('chatInput');
+            const message = input.value.trim();
+            
+            if (!message) return;
+
+            // Add user message
+            addChatMessage(message, 'user');
+            input.value = '';
+
+            try {
+                const response = await axios.post(`${API_BASE}/chat`, {
+                    message: message
+                });
+
+                // Add agent response
+                addChatMessage(response.data.response, 'agent');
+            } catch (error) {
+                addChatMessage('Sorry, I encountered an error. Please try again.', 'agent');
+                console.error('Chat error:', error);
+            }
+        }
+
+        function addChatMessage(message, sender) {
+            const container = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message-${sender} rounded-lg p-4 mb-3`;
+            
+            messageDiv.innerHTML = `
+                <p class="text-sm font-medium mb-1">${sender === 'user' ? 'You' : 'AI Assistant'}</p>
+                <p class="text-sm whitespace-pre-wrap">${message}</p>
+            `;
+            
+            container.appendChild(messageDiv);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function handleChatEnter(event) {
+            if (event.key === 'Enter') {
+                sendChatMessage();
+            }
+        }
+
+        // Run monitoring
+        async function runMonitoring() {
+            try {
+                const response = await axios.post(`${API_BASE}/monitoring/run`);
+                alert('Monitoring started! Check alerts in a few moments.');
+            } catch (error) {
+                alert('Error starting monitoring: ' + error.message);
+            }
+        }
+
+        function refreshExpiring() {
+            loadExpiringInventory();
+        }
+
+        // Initialize on load
+        window.addEventListener('load', initDashboard);
+    </script>
+</body>
+</html>

@@ -1,0 +1,250 @@
+{
+  "name": "Clinical Supply Chain Control Tower - Monitoring Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 6 * * *"
+            }
+          ]
+        }
+      },
+      "name": "Daily Cron Trigger (6 AM)",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:8000/api/monitoring/run",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "name": "Call Supply Watchdog API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 2,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Parse the API response and extract alerts\nconst response = items[0].json;\n\nconst expiryAlerts = response.expiry_alerts || [];\nconst shortfallAlerts = response.shortfall_alerts || [];\n\n// Categorize by severity\nconst criticalAlerts = expiryAlerts.filter(a => a.risk_level === 'CRITICAL');\nconst highAlerts = expiryAlerts.filter(a => a.risk_level === 'HIGH');\n\n// Format output\nreturn [\n  {\n    json: {\n      timestamp: response.timestamp,\n      total_expiry_alerts: expiryAlerts.length,\n      total_shortfall_alerts: shortfallAlerts.length,\n      critical_count: criticalAlerts.length,\n      high_count: highAlerts.length,\n      critical_alerts: criticalAlerts,\n      high_alerts: highAlerts,\n      shortfall_alerts: shortfallAlerts,\n      needs_immediate_attention: criticalAlerts.length > 0 || shortfallAlerts.length > 0\n    }\n  }\n];"
+      },
+      "name": "Parse and Categorize Alerts",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{$json.needs_immediate_attention}}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "name": "Check If Action Needed",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Generate HTML email body\nconst data = items[0].json;\n\nlet html = `\n<!DOCTYPE html>\n<html>\n<head>\n  <style>\n    body { font-family: Arial, sans-serif; }\n    .header { background: #dc2626; color: white; padding: 20px; }\n    .alert-card { border-left: 4px solid #dc2626; padding: 15px; margin: 10px 0; background: #fef2f2; }\n    .warning-card { border-left: 4px solid #f59e0b; padding: 15px; margin: 10px 0; background: #fffbeb; }\n    table { width: 100%; border-collapse: collapse; }\n    th { background: #f3f4f6; padding: 10px; text-align: left; }\n    td { padding: 10px; border-bottom: 1px solid #e5e7eb; }\n  </style>\n</head>\n<body>\n  <div class=\"header\">\n    <h1>🚨 Clinical Supply Chain Alert</h1>\n    <p>Daily Monitoring Report - ${new Date(data.timestamp).toLocaleDateString()}</p>\n  </div>\n  \n  <div style=\"padding: 20px;\">\n    <h2>📊 Summary</h2>\n    <ul>\n      <li><strong>Critical Expiry Alerts:</strong> ${data.critical_count}</li>\n      <li><strong>High Priority Alerts:</strong> ${data.high_count}</li>\n      <li><strong>Shortfall Predictions:</strong> ${data.total_shortfall_alerts}</li>\n    </ul>\n`;\n\n// Critical Alerts\nif (data.critical_alerts.length > 0) {\n  html += `\n    <h2>🔴 Critical Expiry Alerts (<30 Days)</h2>\n    <table>\n      <thead>\n        <tr>\n          <th>Trial ID</th>\n          <th>Country</th>\n          <th>Material</th>\n          <th>Batch ID</th>\n          <th>Expiry Date</th>\n          <th>Days Remaining</th>\n          <th>Quantity</th>\n        </tr>\n      </thead>\n      <tbody>\n  `;\n  \n  data.critical_alerts.forEach(alert => {\n    html += `\n      <tr>\n        <td>${alert.trial_id}</td>\n        <td>${alert.country_code}</td>\n        <td>${alert.material_id}</td>\n        <td>${alert.batch_id}</td>\n        <td>${alert.expiry_date}</td>\n        <td style=\"color: #dc2626; font-weight: bold;\">${alert.days_until_expiry}</td>\n        <td>${alert.allocated_quantity}</td>\n      </tr>\n    `;\n  });\n  \n  html += `\n      </tbody>\n    </table>\n  `;\n}\n\n// Shortfall Alerts\nif (data.shortfall_alerts.length > 0) {\n  html += `\n    <h2>⚠️ Stock Shortfall Predictions</h2>\n    <table>\n      <thead>\n        <tr>\n          <th>Trial ID</th>\n          <th>Country</th>\n          <th>Material</th>\n          <th>Current Stock</th>\n          <th>Weekly Consumption</th>\n          <th>Weeks Remaining</th>\n          <th>Projected Stockout</th>\n        </tr>\n      </thead>\n      <tbody>\n  `;\n  \n  data.shortfall_alerts.forEach(alert => {\n    html += `\n      <tr>\n        <td>${alert.trial_id}</td>\n        <td>${alert.country_code}</td>\n        <td>${alert.material_id}</td>\n        <td>${alert.current_stock}</td>\n        <td>${alert.weekly_consumption_rate}</td>\n        <td style=\"color: #f59e0b; font-weight: bold;\">${alert.weeks_remaining}</td>\n        <td>${alert.projected_stockout_date}</td>\n      </tr>\n    `;\n  });\n  \n  html += `\n      </tbody>\n    </table>\n  `;\n}\n\nhtml += `\n    <div style=\"margin-top: 30px; padding: 15px; background: #f3f4f6; border-radius: 5px;\">\n      <h3>📌 Recommended Actions</h3>\n      <ul>\n        <li>Review critical expiry alerts and initiate extension requests</li>\n        <li>Coordinate with sites for shortfall materials</li>\n        <li>Update demand forecasts based on recent enrollment</li>\n        <li>Access full dashboard: <a href=\"http://localhost:8000/dashboard\">Control Tower</a></li>\n      </ul>\n    </div>\n  </div>\n</body>\n</html>\n`;\n\nreturn [\n  {\n    json: {\n      subject: `🚨 Supply Chain Alert: ${data.critical_count} Critical | ${data.total_shortfall_alerts} Shortfalls`,\n      html: html,\n      plain_text: `Critical Alerts: ${data.critical_count}, High Alerts: ${data.high_count}, Shortfalls: ${data.total_shortfall_alerts}`\n    }\n  }\n];"
+      },
+      "name": "Generate Email HTML",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1050, 200]
+    },
+    {
+      "parameters": {
+        "fromEmail": "supply-chain-alerts@globalpharma.com",
+        "toEmail": "supply-managers@globalpharma.com",
+        "ccEmail": "clinical-ops@globalpharma.com",
+        "subject": "={{$json.subject}}",
+        "emailFormat": "html",
+        "text": "={{$json.html}}",
+        "options": {
+          "allowUnauthorizedCerts": true
+        }
+      },
+      "name": "Send Alert Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [1250, 200]
+    },
+    {
+      "parameters": {
+        "url": "https://hooks.slack.com/services/YOUR_SLACK_WEBHOOK",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "text",
+              "value": "={{$json.plain_text}}"
+            },
+            {
+              "name": "username",
+              "value": "Supply Chain Bot"
+            },
+            {
+              "name": "icon_emoji",
+              "value": ":warning:"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Send Slack Notification",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 2,
+      "position": [1250, 400]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Log to monitoring system\nconst data = items[0].json;\n\nconsole.log('Supply Chain Alert Summary:');\nconsole.log(`- Critical: ${data.critical_count}`);\nconsole.log(`- High: ${data.high_count}`);\nconsole.log(`- Shortfalls: ${data.total_shortfall_alerts}`);\n\nreturn items;"
+      },
+      "name": "Log Summary (No Action Required)",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1050, 400]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Save alert data to database for historical tracking\nconst data = items[0].json;\n\nreturn [\n  {\n    json: {\n      table: 'monitoring_history',\n      data: {\n        timestamp: data.timestamp,\n        critical_count: data.critical_count,\n        high_count: data.high_count,\n        shortfall_count: data.total_shortfall_alerts,\n        alert_details: JSON.stringify(data)\n      }\n    }\n  }\n];"
+      },
+      "name": "Prepare Database Insert",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [850, 500]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO monitoring_history (timestamp, critical_count, high_count, shortfall_count, alert_details) VALUES ($1, $2, $3, $4, $5)",
+        "queryParameters": "={{$json.data.timestamp}},={{$json.data.critical_count}},={{$json.data.high_count}},={{$json.data.shortfall_count}},={{$json.data.alert_details}}"
+      },
+      "name": "Store in Database",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 1,
+      "position": [1050, 500],
+      "credentials": {
+        "postgres": {
+          "id": "1",
+          "name": "Clinical Supply DB"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Daily Cron Trigger (6 AM)": {
+      "main": [
+        [
+          {
+            "node": "Call Supply Watchdog API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Supply Watchdog API": {
+      "main": [
+        [
+          {
+            "node": "Parse and Categorize Alerts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse and Categorize Alerts": {
+      "main": [
+        [
+          {
+            "node": "Check If Action Needed",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Prepare Database Insert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check If Action Needed": {
+      "main": [
+        [
+          {
+            "node": "Generate Email HTML",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Summary (No Action Required)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Email HTML": {
+      "main": [
+        [
+          {
+            "node": "Send Alert Email",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send Slack Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Database Insert": {
+      "main": [
+        [
+          {
+            "node": "Store in Database",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": ["supply-chain", "monitoring", "clinical-trials"],
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}
